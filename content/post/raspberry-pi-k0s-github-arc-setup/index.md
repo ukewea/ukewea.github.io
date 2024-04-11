@@ -8,23 +8,24 @@ tags:
   - kubernetes
   - k8s
   - raspi
+  - container
 ---
 
 I own a [repository](https://github.com/ukewea/python-talib) which builds Docker (container) image for amd64, arm64, arm/v7 architectures.
 
-Building amd64 variant is fast, but building arm64 and arm/v7 images on GitHub-hosted Actions Runner is a disaster. Although I don't care about build time, but it's a good chance for me to investigate any way to reduce the build time.
+Building amd64 variant is fast, but building arm64 and arm/v7 images on GitHub-hosted Actions Runner is a disaster. Although I don't care about build time (image build happens while I'm asleep), but it's a good chance for me to investigate any way to reduce the build time.
 
 ![](2024-04-04-08-27-22.png)
 
-Since the image build of ARM variants are ran on a AMD64 machine with QEMU, so I think we can setup some native GitHub Actions Runners running in ARM architecture environments.
+Since the image build of ARM variants ran on AMD64 machines with QEMU, I think it's possible to speed up by using GitHub Actions Runners running in ARM architecture environments.
 
 Since GitHub doesn't provide such runner to public (as of April 2024), we have to setup our own.
 
-So, in this guide, I will walk through the process of setting up a single node Kubernetes cluster on a Raspberry Pi using k0s, and then deploying an Actions Runner Controller to manage our GitHub Actions runners.
+So in this guide, I will walk through the process of setting up a single node Kubernetes cluster on a Raspberry Pi using k0s, and then deploying an Actions Runner Controller to manage our GitHub Actions runners.
 
 ## Hardware & OS
 
-I'll be setup a Raspberry Pi 4 running Ubuntu 23.10 (arm64). Only one machine is required as I am only setting the cluster in single node.
+I'll be setup a Raspberry Pi 4 running Ubuntu 23.10 (arm64). Only one machine is required as I am setting the cluster with only one single node.
 
 I don't need HA for my hobby project.
 
@@ -136,7 +137,7 @@ Let's pause and test the configuration, type `kubectl get pods -A` in your termi
 
 ### Helm Installation
 
-Install Helm 3 for managing Kubernetes applications:
+Install Helm 3 to manage Kubernetes applications:
 
 ```bash
 curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
@@ -155,6 +156,36 @@ helm install arc \
     --create-namespace \
     oci://ghcr.io/actions/actions-runner-controller-charts/gha-runner-scale-set-controller
 ```
+
+### Create a GitHub App for Runner Scale Set
+
+Runner Scale Set needs to interactive with your organization/repo when register/deregister runner, so we have either provide a Personal Access Token or create a GitHub App for it.
+
+I go for GitHub Apps this time, it is more complicated but offers some degress of security comaring to provide a PAT.
+
+In your organization settings, navigate to "Developer Settings" > "GitHub Apps".
+
+![](2024-04-11-23-48-04.png)
+
+Click "New GitHub App"
+
+![](2024-04-11-23-49-03.png)
+
+Select required permissions as per official documentation [here](https://docs.github.com/en/actions/hosting-your-own-runners/managing-self-hosted-runners-with-actions-runner-controller/authenticating-to-the-github-api#authenticating-arc-with-a-github-app).
+
+After created the App, click Generate a private key and save the .pem file.
+
+![](2024-04-11-23-57-48.png)
+
+In the menu at the top-left corner of the page, click Install app, and next to your organization, click Install to install the app on your organization.
+
+![](2024-04-12-00-02-33.png)
+
+After confirming the installation permissions on your organization, note the app installation ID. You will use it later. You can find the app installation ID on the app installation page, which has the following URL format:
+
+https://github.com/organizations/ORGANIZATION/settings/installations/INSTALLATION_ID
+
+Remember `App ID`, `Installation ID`, and private key, you'll need them later.
 
 ### Configure Runner Scale Set
 
@@ -204,22 +235,35 @@ runnerScaleSetName: "set-linux-arm64"
 #           value: "false"
 ```
 
-### Add Personal Access Token to k8s namespace
+### Add Personal Access Token to k8s namespace (mutual exclusive to next part)
+
+(This part is only needed if you choose not to create a GitHub App but rather **provide a PAT to runner scale set**)
 
 Securely add your Personal Access Token (PAT) for GitHub:
 
 For how to generate PAT, please read the [documentation](https://github.com/actions/actions-runner-controller/blob/master/docs/authenticating-to-the-github-api.md#deploying-using-pat-authentication).
 
-> NOTE
->
-> I added a space character before `kubectl` string, that way the later command is not saved in bash/zsh history.
 
 ```bash
 kubectl create namespace arc-runners
- kubectl -n arc-runners create secret generic pre-defined-secret --from-literal=github_token='__PAT_YOU_GENERATED_ON_GITHUB__'
+kubectl -n arc-runners create secret generic pre-defined-secret \
+   --from-literal=github_token='__PAT_YOU_GENERATED_ON_GITHUB__'
 ```
 
-Install the runner set using the prepared Helm values:
+### Add GitHub App Credential to k8s namespace (mutual exclusive to previous part)
+
+(This part is only needed if you choose not to provide a PAT but rather **create a GitHub App for runner scale set**)
+
+```bash
+kubectl create namespace arc-runners
+kubectl create secret generic pre-defined-secret \
+   --namespace=arc-runners \
+   --from-literal=github_app_id=123456 \
+   --from-literal=github_app_installation_id=654321 \
+   --from-literal=github_app_private_key='-----BEGIN RSA PRIVATE KEY-----********'
+```
+
+### Install the runner set using the prepared Helm values
 
 ```bash
 INSTALLATION_NAME="arc-runner-set"
