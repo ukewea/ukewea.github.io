@@ -9,6 +9,7 @@ tags:
   - k8s
   - raspi
   - container
+  - github-actions
 ---
 
 I own a [repository](https://github.com/ukewea/python-talib) which builds Docker (container) image for amd64, arm64, arm/v7 architectures.
@@ -292,3 +293,11 @@ arc-systems        set-linux-arm64-dind-6f85f55d-listener         1/1     Runnin
 And we are done!
 
 ![](2024-04-04-09-01-48.png)
+
+---
+
+## Proxy setting
+
+If you need proxy setup, read following articles to do it properly:
+- k0s: [Environment variables](https://docs.k0sproject.io/stable/environment-variables/?h=proxy)
+- ARC: [values.yaml](https://github.com/actions/actions-runner-controller/blob/master/charts/gha-runner-scale-set/values.yaml) (jump to `proxy` part of the file)

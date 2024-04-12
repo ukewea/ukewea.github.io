@@ -7,7 +7,7 @@ math:
 license:
 hidden: false
 comments: true
-draft: true
+draft: false
 categories:
   - GitHub Actions
 tags:
@@ -16,7 +16,7 @@ tags:
   - github-packages
 ---
 
-I'm learning use kaniko to build image without help of DinD, so I cloned [the repo](https://github.com/ukeweu/python-talib) as a playground.
+I was learning use kaniko to build image without Docker in Docker (DinD), so I cloned [the repo](https://github.com/ukeweu/python-talib) to test it out.
 
 
 The build process with kaniko was OK, however following error shown while pushing image to GitHub Container Registry (GHCR):
@@ -44,9 +44,8 @@ After an hour of investigating, here's why I had done, causing image pushing fai
 - I created the package `python-talib` with a GitHub Action workflow in repo `test-build-image`.
 - I tried pushing `python-talib` in the repo `python-talib`, encountered 403.
 
-GitHub refused push image with name `python-talib` in repo `python-talib` because the image name was first created in repo `test-build-image`, thus any other repo will not have permission to write new data.
+GitHub refused pushing image with name `python-talib` in repo `python-talib`'s workflow because the image name was first created in repo `test-build-image`'s workflow, thus any other repo will not have permission to write new data.
 
-To solve issue, goto the package setting of `python-talib`, in 'Manage Actions access', Add the `python-talib` repository, and change its role to 'Admin' or 'Write'.
+To solve issue, goto the package setting of `python-talib` package, in 'Manage Actions access', add the `python-talib` repository, and change its role to 'Admin' or 'Write'.
 
 ![](2024-04-12-23-02-59.png)
-
