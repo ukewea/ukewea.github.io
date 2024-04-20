@@ -10,6 +10,7 @@ tags:
   - raspi
   - container
   - github-actions
+  - linux
 ---
 
 I own a [repository](https://github.com/ukewea/python-talib) which builds Docker (container) image for amd64, arm64, arm/v7 architectures.
