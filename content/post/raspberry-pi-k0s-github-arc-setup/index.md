@@ -1,5 +1,5 @@
 ---
-title: Setting Up a Kubernetes Cluster on Raspberry Pi with k0s and Deploying Actions Runner Controller
+title: Setting Up Self-Hosted GitHub Actions Runners in a Kubernetes Cluster, the Easy Way
 date: 2024-04-04 09:57:27+0800
 categories:
   - GitHub Actions
@@ -11,41 +11,59 @@ tags:
   - container
   - github-actions
   - linux
+  - self-hosted-runner
+  - raspberry-pi
+  - arm64
 ---
 
-I own a [repository](https://github.com/ukewea/python-talib) which builds Docker (container) image for amd64, arm64, arm/v7 architectures.
+## Introduction
 
-Building amd64 variant is fast, but building arm64 and arm/v7 images on GitHub-hosted Actions Runner is a disaster. Although I don't care about build time (image build happens while I'm asleep), but it's a good chance for me to investigate any way to reduce the build time.
+I own a [repository](https://github.com/ukewea/python-talib) which builds Docker (container) image for amd64, arm64, arm/v7 architectures once a month.
+
+The bottleneck of whole workflow is building arm/v7 images, on GitHub-hosted Actions Runner (as of April 2024), it took around 90 minutes to build.
 
 ![](2024-04-04-08-27-22.png)
 
-Since the image build of ARM variants ran on AMD64 machines with QEMU, I think it's possible to speed up by using GitHub Actions Runners running in ARM architecture environments.
+Since the image build of ARM variants ran on AMD64 machines with QEMU, I think it's possible to speed up by using GitHub Actions Runners running in native ARM architecture environments.
 
-Since GitHub doesn't provide such runner to public (as of April 2024), we have to setup our own.
+However, GitHub doesn't provide such runner to public (as of April 2024), we have to setup our own.
 
-So in this guide, I will walk through the process of setting up a single node Kubernetes cluster on a Raspberry Pi using k0s, and then deploying an Actions Runner Controller to manage our GitHub Actions runners.
+In this guide, I will walk through the process of **setting up a single node Kubernetes cluster on a Raspberry Pi 4, and deploying an Actions Runner Controller to dynamically provision/deprovision GitHub Actions runners.**
 
-## Hardware & OS
+## Spoiler Alert
 
-I'll be setup a Raspberry Pi 4 running Ubuntu 23.10 (arm64). Only one machine is required as I am setting the cluster with only one single node.
+As you can see from the image below, running arm/v7 task on an arm64 Runner greatly improved the build time, from 90 minutes to 40 minutes.
 
-I don't need HA for my hobby project.
+![](2024-04-21-08-22-29.png)
 
-## Pre-requisites
+## What will be done in this guide
+
+In this guide, we will:
+
+* Install [k0s](https://k0sproject.io/) on a Raspberry Pi 4 running Ubuntu 23.10
+* Deploy an [Actions Runner Controller](https://docs.github.com/en/actions/hosting-your-own-runners/managing-self-hosted-runners-with-actions-runner-controller/quickstart-for-actions-runner-controller) in the cluster to manage our GitHub Actions runners
+
+### Hardware & OS
+
+I'll setup a Raspberry Pi 4 running Ubuntu 23.10 (arm64). Only one machine is required as I am setting the cluster with only one single node.
+
+No HA setup, I am trading off the reliability for the cost.
+
+
+## Setup: Deploy k0s on the Pi 4
+
+Before installing GitHub Actions Runner Controller (ARC), we need a kubernetes cluster. For quick and dirty setup on a resource constrained machine, I chose k0s and deployed in single mode configuration.
 
 I followed some steps on the [official k0s documentation](https://docs.k0sproject.io/v1.23.6+k0s.2/raspberry-pi4/).
+
+
+### System Configuration
 
 Ensure the following packages are installed on your Raspberry Pi :
 
 ```bash
 sudo apt-get update && sudo apt-get install cgroup-lite cgroup-tools cgroupfs-mount
 ```
-
-## Deploy k0s on the Pi 4
-
-Before installing GitHub Actions Runner Controller (ARC), we need a kubernetes cluster. For quick and dirty setup on a resource constrained machine, I chose k0s and deployed in single mode configuration.
-
-### Kernel Configuration
 
 Enable memory cgroup in the kernel by modifying the kernel command line:
 
@@ -145,7 +163,7 @@ Install Helm 3 to manage Kubernetes applications:
 curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
 ```
 
-## Install GitHub Actions Runner Controller And Runner Scale Set
+## Setup: Install GitHub Actions Runner Controller And Runner Scale Set
 
 ### Deploying Actions Runner Controller
 
@@ -302,3 +320,48 @@ And we are done!
 If you need proxy setup, read following articles to do it properly:
 - k0s: [Environment variables](https://docs.k0sproject.io/stable/environment-variables/?h=proxy)
 - ARC: [values.yaml](https://github.com/actions/actions-runner-controller/blob/master/charts/gha-runner-scale-set/values.yaml) (jump to `proxy` part of the file)
+
+## Conclusion
+
+In this guide, we have set up a single node Kubernetes cluster on a Raspberry Pi 4, and deployed an Actions Runner Controller to dynamically provision/deprovision GitHub Actions runners, topology shown below:
+
+```
++-----------------------------------------------------------------+
+|                            GitHub                               |
+|                                                                 |
+| +----------------+     +----------------+                       |
+| | GitHub Actions | <-> | GitHub Actions |                       |
+| |    Workflows   |     |    Repository  |                       |
+| +----------------+     +----------------+                       |
++-----------------------------------------------------------------+
+                              /\
+                              ||
+                              ||
++-----------------------------------------------------------------+
+|                   Raspberry Pi 4 (Single Node)                  |
+|                     Running Ubuntu 23.10                        |
+|                                                                 |
+|                       +-----------------+                       |
+|                       | Kubernetes Node |                       |
+|                       |    (k0s)        |                       |
+|                       +-----------------+                       |
+|                               ||                                |
+|        +----------------------+-----------------------+         |
+|        |                                              |         |
+|        |    +-------------+        +-------------+    |         |
+|        |    |             |        |             |    |         |
+|        |    |  Actions    |        |  Runner Set |    |         |
+|        |    | Runner Ctrl | <----> |  Namespace  |    |         |
+|        |    | Namespace   |        |             |    |         |
+|        |    |             |        |             |    |         |
+|        |    +-------------+        +-------------+    |         |
+|        |           ||                    ||           |         |
+|        |           ||                    ||           |         |
+|        |     +-----++-----+       +------++------+    |         |
+|        |     |  Listener  |       |    Runner    |    |         |
+|        |     |    Pods    |       |     Pods     |    |         |
+|        |     +------------+       +--------------+    |         |
+|        +----------------------------------------------+         |
+|                                                                 |
++-----------------------------------------------------------------+
+```
