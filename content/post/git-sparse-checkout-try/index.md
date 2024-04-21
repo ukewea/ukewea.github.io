@@ -1,5 +1,5 @@
 ---
-title: "Git Sparse Checkout Try"
+title: "Git Sparse Checkout Tryout"
 description:
 date: 2024-04-20T21:42:35+08:00
 image:
