@@ -134,19 +134,19 @@ According to [https://k6.io/blog/k6-vs-jmeter/](https://k6.io/blog/k6-vs-jmeter/
 
 ## Which Tool to Recommend
 
-## Background Analysis
+### Background Analysis
 
 (Reserved content for internal use)
 
-## Perspective of Test Writers
+### Perspective of Test Writers
 
 (Reserved content for internal use)
 
-## Perspective of CI/CD Integrators
+### Perspective of CI/CD Integrators
 
 (Reserved content for internal use)
 
-## Perspective of Resource Constraints
+### Perspective of Resource Constraints
 
 (Reserved content for internal use)
 
