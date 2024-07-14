@@ -1,7 +1,7 @@
 ---
-title: "Building a Full-Stack Application with Spring Boot and React: A Comprehensive Guide"
+title: "Building a Full Stack Application With Spring Boot and React: A Comprehensive Guide"
 description: 
-date: 2024-07-14T12:07:59+08:00
+date: 2024-07-14T12:26:21+08:00
 image: 
 math: 
 license: 

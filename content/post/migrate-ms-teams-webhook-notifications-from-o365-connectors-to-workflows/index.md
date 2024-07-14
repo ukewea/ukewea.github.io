@@ -1,5 +1,5 @@
 ---
-title: "Migrate Ms Teams Webhook Notifications From O365 Connectors to Workflows"
+title: "Migrate MS Teams Webhook Notifications From O365 Connectors to Workflows"
 description: 
 date: 2024-07-09T22:55:14+08:00
 image: 
