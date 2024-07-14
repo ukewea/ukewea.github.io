@@ -433,6 +433,7 @@ In PowerShell, change to the directory where you created your Spring Boot projec
 ```
 
 `mvnw` is a Maven wrapper script that allows you to run Maven commands, you should see it in your project directory.
+
 ![](2024-07-14-11-52-08.png)
 
 After executing the command, you will see logs on terminal like below:
